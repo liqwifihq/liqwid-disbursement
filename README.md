@@ -32,30 +32,23 @@ Notes:
 
 ## Deploying to an AWS server
 
-The [GitHub Actions workflow](.github/workflows/deploy-aws.yml) builds and deploys this backend. The `backend` directory must be the root of its own GitHub repository so GitHub discovers `backend/.github/workflows/deploy-aws.yml` as the repository's workflow.
+The workflow is [.github/workflows/deploy-aws.yml](.github/workflows/deploy-aws.yml). It deploys every push to `main`, runs database migrations, and starts the API, Redis, and payment worker.
 
-A push to `main` first builds the NestJS app and validates the production Compose file. It then uploads that exact backend revision to an EC2-style Linux host over SSH. On the server, the script builds production images, starts Redis, connects to the configured AWS PostgreSQL database, runs reviewed TypeORM migrations, and replaces the API and worker containers only after those steps succeed.
+It assumes:
 
-Prepare an Ubuntu EC2 instance with Docker Engine, the Docker Compose plugin, and an HTTPS reverse proxy such as Nginx. The API binds to `127.0.0.1:3000`; route backend API traffic and `/webhooks/korapay` to that address. Allow public inbound traffic only on ports 80/443 and restrict port 22 to trusted administrator or runner addresses.
+- this `backend` directory is the root of the GitHub repository;
+- the EC2 SSH user is `ubuntu` and SSH uses port 22;
+- Docker and Docker Compose are installed;
+- `ubuntu` can run `docker compose` without `sudo`.
 
-Create the persistent server configuration (replace the path if needed):
+Add only these repository secrets under **GitHub > Settings > Secrets and variables > Actions**:
 
-```bash
-sudo mkdir -p /opt/liqwifi-backend/shared
-sudo chown -R "$USER":"$USER" /opt/liqwifi-backend
-cp deploy/.env.example /opt/liqwifi-backend/shared/.env
-chmod 600 /opt/liqwifi-backend/shared/.env
-```
+- `AWS_HOST`: the EC2 public IP address or public DNS name.
+- `AWS_SSH_PRIVATE_KEY`: the complete private SSH key, including its BEGIN/END lines.
+- `PRODUCTION_ENV`: the complete multiline production `.env`. Use [.env.example](.env.example) as the list of variables and replace every placeholder.
 
-Fill every placeholder in the server-side `.env`. Set `DATABASE_URL` to the complete AWS RDS PostgreSQL URL and include `sslmode=require`. Percent-encode URL-reserved password characters in the URL. The RDS security group must allow PostgreSQL traffic from the backend server's security group. Keep `PAYMENT_MODE=simulation` until HTTPS, Kora credentials, and webhook delivery have been verified. For provider integration testing, use `PAYMENT_MODE=live` with a Kora test secret; replace it with a live secret only when real payouts are intended.
+No `AWS_DEPLOY_PATH` or `deploy` folder is needed. The workflow creates `/home/ubuntu/liqwifi-backend` and writes its `.env` from `PRODUCTION_ENV`.
 
-Create a GitHub `production` environment and add these secrets:
+Push to `main` to deploy, or open the repository's **Actions > Deploy backend > Run workflow** page to run it manually.
 
-- `AWS_HOST`: the EC2 public DNS name or IPv4 address.
-- `AWS_USER`: the SSH user, commonly `ubuntu`.
-- `AWS_SSH_PORT`: optional; defaults to `22`.
-- `AWS_DEPLOY_PATH`: for example `/opt/liqwifi-backend`.
-- `AWS_SSH_PRIVATE_KEY`: a dedicated deployment private key.
-- `AWS_SSH_KNOWN_HOSTS`: the server's pinned known-hosts line obtained through a trusted channel.
-
-The SSH user must be able to run `docker compose` without an interactive `sudo` prompt and write to `AWS_DEPLOY_PATH`. GitHub environment protection rules can require approval before production deployment. Database, encryption, internal API, and payment-provider secrets stay in the server-side `.env`, not in GitHub Actions.
+The API listens on `127.0.0.1:3000`. Configure Nginx or another HTTPS reverse proxy to send API requests and `/webhooks/korapay` to that address.
