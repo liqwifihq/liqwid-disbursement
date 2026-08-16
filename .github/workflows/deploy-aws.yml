@@ -1,0 +1,112 @@
+name: Deploy backend to AWS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-production-deployment
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Build and verify backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Validate production Compose structure
+        run: docker compose -f docker-compose.production.yml config --quiet --no-interpolate
+
+  deploy:
+    name: Deploy backend production
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate deployment settings
+        env:
+          DEPLOY_HOST: ${{ secrets.AWS_HOST }}
+          DEPLOY_USER: ${{ secrets.AWS_USER }}
+          DEPLOY_PORT: ${{ secrets.AWS_SSH_PORT }}
+          DEPLOY_ROOT: ${{ secrets.AWS_DEPLOY_PATH }}
+          SSH_PRIVATE_KEY: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.AWS_SSH_KNOWN_HOSTS }}
+        run: |
+          : "${DEPLOY_HOST:?Add the AWS_HOST production secret}"
+          : "${DEPLOY_USER:?Add the AWS_USER production secret}"
+          : "${DEPLOY_ROOT:?Add the AWS_DEPLOY_PATH production secret}"
+          : "${SSH_PRIVATE_KEY:?Add the AWS_SSH_PRIVATE_KEY production secret}"
+          : "${SSH_KNOWN_HOSTS:?Add the AWS_SSH_KNOWN_HOSTS production secret}"
+          [[ "$DEPLOY_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
+          [[ "$DEPLOY_USER" =~ ^[A-Za-z0-9._-]+$ ]]
+          [[ "$DEPLOY_ROOT" =~ ^/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)+$ && "$DEPLOY_ROOT" != *..* ]]
+          [[ "${DEPLOY_PORT:-22}" =~ ^[0-9]{1,5}$ ]]
+          (( 10#${DEPLOY_PORT:-22} >= 1 && 10#${DEPLOY_PORT:-22} <= 65535 ))
+
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.AWS_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/deploy_key"
+          chmod 600 "$HOME/.ssh/deploy_key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Package backend release
+        run: git archive --format=tar.gz --output="/tmp/liqwifi-backend-${GITHUB_SHA}.tar.gz" "$GITHUB_SHA"
+
+      - name: Upload backend release
+        env:
+          DEPLOY_HOST: ${{ secrets.AWS_HOST }}
+          DEPLOY_USER: ${{ secrets.AWS_USER }}
+          DEPLOY_PORT: ${{ secrets.AWS_SSH_PORT }}
+        run: |
+          scp \
+            -i "$HOME/.ssh/deploy_key" \
+            -P "${DEPLOY_PORT:-22}" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "/tmp/liqwifi-backend-${GITHUB_SHA}.tar.gz" \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/liqwifi-backend-${GITHUB_SHA}.tar.gz"
+
+      - name: Run backend deployment
+        env:
+          DEPLOY_HOST: ${{ secrets.AWS_HOST }}
+          DEPLOY_USER: ${{ secrets.AWS_USER }}
+          DEPLOY_PORT: ${{ secrets.AWS_SSH_PORT }}
+          DEPLOY_ROOT: ${{ secrets.AWS_DEPLOY_PATH }}
+        run: |
+          ssh \
+            -i "$HOME/.ssh/deploy_key" \
+            -p "${DEPLOY_PORT:-22}" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "bash -s -- '$DEPLOY_ROOT' '$GITHUB_SHA' 'liqwifi-backend-${GITHUB_SHA}.tar.gz'" \
+            < scripts/deploy-production.sh

@@ -1,0 +1,36 @@
+{
+  "name": "disbursement-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "worker": "ts-node-dev --respawn --transpile-only src/worker/worker.ts",
+    "start": "node dist/main.js",
+    "build": "tsc -p tsconfig.build.json",
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d src/ormconfig.ts",
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/ormconfig.ts",
+    "migration:run:prod": "typeorm migration:run -d dist/ormconfig.js"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.2.0",
+    "@nestjs/core": "^11.2.0",
+    "@nestjs/platform-express": "^11.2.0",
+    "bullmq": "^6.1.1",
+    "ioredis": "^5.3.2",
+    "papaparse": "^5.4.1",
+    "pg": "^8.10.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "typeorm": "^0.3.17",
+    "dotenv": "^16.0.3",
+    "axios": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^20.16.1",
+    "@types/papaparse": "^5.3.14",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.2.2"
+  }
+}

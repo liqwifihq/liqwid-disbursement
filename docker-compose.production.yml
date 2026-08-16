@@ -1,0 +1,84 @@
+name: liqwifi-backend
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+x-backend-environment: &backend-environment
+  NODE_ENV: production
+  DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in the production environment file}
+  REDIS_URL: ${REDIS_URL:?Set REDIS_URL in the production environment file}
+  TYPEORM_SYNCHRONIZE: "false"
+  DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?Set DATA_ENCRYPTION_KEY in the production environment file}
+  PAYMENT_MODE: ${PAYMENT_MODE:?Set PAYMENT_MODE to simulation or live}
+  KORAPAY_SECRET: ${KORAPAY_SECRET:-}
+  KORAPAY_BASE_URL: ${KORAPAY_BASE_URL:-https://api.korapay.com}
+  KORAPAY_ALLOWED_HOSTS: ${KORAPAY_ALLOWED_HOSTS:-api.korapay.com}
+  DISCORD_SUCCESS_WEBHOOK_URL: ${DISCORD_SUCCESS_WEBHOOK_URL:?Set the successful-payment Discord webhook URL}
+  DISCORD_FAILURE_WEBHOOK_URL: ${DISCORD_FAILURE_WEBHOOK_URL:?Set the failed-payment Discord webhook URL}
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in the production environment file}"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a '$${REDIS_PASSWORD}' ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in the production environment file}
+    logging: *default-logging
+
+  backend:
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    environment:
+      <<: *backend-environment
+      API_HOST: 0.0.0.0
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:?Set INTERNAL_API_TOKEN in the production environment file}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS in the production environment file}
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/batches',{headers:{'x-admin-token':process.env.INTERNAL_API_TOKEN}}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
+
+  worker:
+    build:
+      context: .
+      target: production
+    command: ["node", "dist/worker/worker.js"]
+    restart: unless-stopped
+    environment:
+      <<: *backend-environment
+    depends_on:
+      redis:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
+
+volumes:
+  redis_data:
+    name: liqwifi_backend_redis_data
