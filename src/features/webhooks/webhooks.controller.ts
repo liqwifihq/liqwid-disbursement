@@ -1,4 +1,5 @@
 import { Body, Controller, Headers, Post } from '@nestjs/common';
+import { ApiBody, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuditLog } from '../../entities/audit.entity';
 import { Batch, BatchStatus } from '../../entities/batch.entity';
 import { Transaction } from '../../entities/transaction.entity';
@@ -28,8 +29,21 @@ async function updateBatchStatus(batchId: string) {
 }
 
 @Controller('webhooks')
+@ApiTags('Webhooks')
 export class WebhooksController {
   @Post('korapay')
+  @ApiOperation({ summary: 'Receive a signed Kora payment-status webhook' })
+  @ApiHeader({ name: 'x-korapay-signature', description: 'Kora webhook signature', required: true })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['event', 'data'],
+      properties: {
+        event: { type: 'string', example: 'transfer.success' },
+        data: { type: 'object', additionalProperties: true },
+      },
+    },
+  })
   async korapay(@Body() payload: any, @Headers('x-korapay-signature') signature?: string) {
     const korapay = new KorapayService();
     if (!korapay.verifyWebhookSignature(payload?.data, signature)) {

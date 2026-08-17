@@ -1,4 +1,5 @@
 import { BadRequestException, Body, Controller, Headers, NotFoundException, Post } from '@nestjs/common';
+import { ApiBody, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuditLog } from '../../entities/audit.entity';
 import { Batch, BatchStatus } from '../../entities/batch.entity';
 import { Transaction } from '../../entities/transaction.entity';
@@ -20,8 +21,19 @@ function providerMatches(transaction: Transaction, data: any) {
 }
 
 @Controller('reconcile')
+@ApiTags('Reconciliation')
 export class ReconcileController {
   @Post('batch')
+  @ApiOperation({ summary: 'Query Kora and reconcile a batch manually' })
+  @ApiHeader({ name: 'x-admin-actor', description: 'Authenticated operator email', required: true })
+  @ApiHeader({ name: 'x-admin-role', description: 'Operator role: approver or admin', required: true })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['batchId'],
+      properties: { batchId: { type: 'string', format: 'uuid' } },
+    },
+  })
   async reconcileBatch(
     @Body() body: { batchId?: string },
     @Headers('x-admin-actor') actorHeader?: string,

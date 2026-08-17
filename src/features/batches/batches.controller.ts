@@ -7,6 +7,7 @@ import {
   Param,
   Post,
 } from '@nestjs/common';
+import { ApiHeader, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { AuditLog } from '../../entities/audit.entity';
 import { Batch } from '../../entities/batch.entity';
 import { Transaction } from '../../entities/transaction.entity';
@@ -15,10 +16,12 @@ import { requestActor, requireRole } from '../../security/actor';
 import { DisbursementService } from '../disbursement/disbursement.service';
 
 @Controller('batches')
+@ApiTags('Batches')
 export class BatchesController {
   constructor(private readonly disbursementService: DisbursementService) {}
 
   @Get()
+  @ApiOperation({ summary: 'List payout batches' })
   async list() {
     return AppDataSource.getRepository(Batch).find({
       relations: ['transactions'],
@@ -38,6 +41,8 @@ export class BatchesController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Get one batch and its transactions' })
+  @ApiParam({ name: 'id', description: 'Batch UUID' })
   async get(@Param('id') id: string) {
     const batch = await AppDataSource.getRepository(Batch).findOne({
       where: { id },
@@ -49,6 +54,10 @@ export class BatchesController {
   }
 
   @Post(':id/approve')
+  @ApiOperation({ summary: 'Approve a ready payout batch' })
+  @ApiParam({ name: 'id', description: 'Batch UUID' })
+  @ApiHeader({ name: 'x-admin-actor', description: 'Authenticated operator email', required: true })
+  @ApiHeader({ name: 'x-admin-role', description: 'Operator role: approver or admin', required: true })
   async approve(
     @Param('id') id: string,
     @Headers('x-admin-actor') actorHeader?: string,
@@ -80,6 +89,10 @@ export class BatchesController {
   }
 
   @Post(':id/disburse')
+  @ApiOperation({ summary: 'Enqueue an approved batch for payment' })
+  @ApiParam({ name: 'id', description: 'Batch UUID' })
+  @ApiHeader({ name: 'x-admin-actor', description: 'Authenticated operator email', required: true })
+  @ApiHeader({ name: 'x-admin-role', description: 'Operator role: approver or admin', required: true })
   async disburse(
     @Param('id') id: string,
     @Headers('x-admin-actor') actorHeader?: string,

@@ -20,6 +20,8 @@ Endpoints:
 - POST /batches/:id/disburse -> enqueue an approved batch
  - POST /reconcile/batch -> { batchId }  // reconcile transactions with Korapay
 
+Interactive OpenAPI documentation is available at `/docs`. Click **Authorize** and enter the configured `INTERNAL_API_TOKEN` to call protected endpoints.
+
 Notes:
 - `PAYMENT_MODE` must be explicitly `simulation` or `live`. Simulation never calls Kora or reports settlement success. Live mode calls Kora; a Kora test key uses their sandbox, while a Kora live key can transfer real funds.
 - `DATA_ENCRYPTION_KEY` encrypts bank account numbers with AES-256-GCM.
