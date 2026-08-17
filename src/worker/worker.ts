@@ -6,7 +6,12 @@ import { Batch, BatchStatus } from '../entities/batch.entity';
 import { Transaction } from '../entities/transaction.entity';
 import { AppDataSource } from '../ormconfig';
 import { KorapayService } from '../services/korapay.service';
-import { sendDiscordPaymentAlert, validateDiscordPaymentAlerts } from '../services/discord-alert.service';
+import {
+  sendDiscordPaymentAlert,
+  sendDiscordWorkerErrorAlert,
+  validateDiscordPaymentAlerts,
+  WorkerErrorAlert,
+} from '../services/discord-alert.service';
 import { getPaymentMode, validateRuntimeConfig } from '../config';
 import {
   enqueuePaymentAlert,
@@ -20,6 +25,63 @@ import { parseMinorUnits } from '../utils/money';
 
 const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
+});
+
+const WORKER_ALERT_THROTTLE_MS = 5 * 60_000;
+const workerAlertTimes = new Map<string, number>();
+
+function errorMessage(error: unknown) {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status ? `HTTP ${error.response.status}: ` : '';
+    const responseMessage = String(error.response?.data?.message || '').trim();
+    return `${status}${responseMessage || error.message || 'Provider request failed.'}`.slice(0, 1000);
+  }
+  return (error instanceof Error ? error.message : String(error || 'Unknown worker error')).slice(0, 1000);
+}
+
+async function reportWorkerError(alert: WorkerErrorAlert) {
+  const fingerprint = `${alert.component}:${alert.jobId || ''}:${alert.message}`;
+  const now = Date.now();
+  const lastSent = workerAlertTimes.get(fingerprint) || 0;
+  if (now - lastSent < WORKER_ALERT_THROTTLE_MS) return;
+  workerAlertTimes.set(fingerprint, now);
+
+  try {
+    await sendDiscordWorkerErrorAlert(alert);
+  } catch (notificationError) {
+    console.error('Worker Discord notification failed:', errorMessage(notificationError));
+  }
+}
+
+type FailedJob = {
+  id?: string;
+  name?: string;
+  data?: unknown;
+  attemptsMade: number;
+  opts: { attempts?: number };
+};
+
+function reportFinalJobFailure(component: string, job: FailedJob | undefined, error: unknown) {
+  const maxAttempts = Number(job?.opts.attempts || 1);
+  if (job && job.attemptsMade < maxAttempts) return;
+  const data = job?.data && typeof job.data === 'object'
+    ? job.data as Partial<PaymentAlertJob & PaymentConfirmationJob>
+    : {};
+  void reportWorkerError({
+    component,
+    message: errorMessage(error),
+    jobId: job?.id ? String(job.id) : undefined,
+    jobName: job?.name,
+    attempt: job ? `${job.attemptsMade}/${maxAttempts}` : undefined,
+    batchId: data.batchId,
+    transactionId: data.transactionId,
+    reference: data.reference,
+  });
+}
+
+connection.on('error', (error) => {
+  console.error('Worker Redis error:', errorMessage(error));
+  void reportWorkerError({ component: 'redis', message: errorMessage(error) });
 });
 
 async function updateBatchStatus(batchId: string) {
@@ -147,7 +209,18 @@ async function bootstrap() {
 
       // Definite validation failures complete the job. Network/server errors fail the job
       // in an uncertain state and must be reconciled by reference before any manual retry.
-      if (status === 'failed') return { ok: false, status };
+      if (status === 'failed') {
+        await enqueuePaymentAlert({
+          batchId,
+          transactionId: transaction.id,
+          reference: transaction.reference,
+          amount: transaction.amount,
+          currency: transaction.currency,
+          status,
+          message: providerMessage((providerResponse as any).data) || providerResponse.message,
+        });
+        return { ok: false, status };
+      }
       throw error;
     }
   }, { connection });
@@ -242,15 +315,37 @@ async function bootstrap() {
   }, { connection, concurrency: 2 });
 
   worker.on('completed', (job) => console.log('Completed', job.id));
-  worker.on('failed', (job, error) => console.error('Failed', job?.id, error));
+  worker.on('failed', (job, error) => {
+    console.error('Disbursement failed', job?.id, errorMessage(error));
+    reportFinalJobFailure('disbursement-worker', job, error);
+  });
+  worker.on('error', (error) => {
+    console.error('Disbursement worker error:', errorMessage(error));
+    void reportWorkerError({ component: 'disbursement-worker', message: errorMessage(error) });
+  });
   confirmationWorker.on('completed', (job) => console.log('Confirmation completed', job.id));
-  confirmationWorker.on('failed', (job, error) => console.error('Confirmation failed', job?.id, error));
+  confirmationWorker.on('failed', (job, error) => {
+    console.error('Confirmation failed', job?.id, errorMessage(error));
+    reportFinalJobFailure('confirmation-worker', job, error);
+  });
+  confirmationWorker.on('error', (error) => {
+    console.error('Confirmation worker error:', errorMessage(error));
+    void reportWorkerError({ component: 'confirmation-worker', message: errorMessage(error) });
+  });
   alertWorker.on('completed', (job) => console.log('Discord alert sent', job.id));
-  alertWorker.on('failed', (job, error) => console.error('Discord alert failed', job?.id, error));
+  alertWorker.on('failed', (job, error) => {
+    console.error('Discord alert failed', job?.id, errorMessage(error));
+    reportFinalJobFailure('discord-alert-worker', job, error);
+  });
+  alertWorker.on('error', (error) => {
+    console.error('Discord alert worker error:', errorMessage(error));
+    void reportWorkerError({ component: 'discord-alert-worker', message: errorMessage(error) });
+  });
   console.log('Worker started');
 }
 
-bootstrap().catch((error) => {
-  console.error('Worker startup failed', error);
+bootstrap().catch(async (error) => {
+  console.error('Worker startup failed:', errorMessage(error));
+  await reportWorkerError({ component: 'worker-startup', message: errorMessage(error) });
   process.exitCode = 1;
 });

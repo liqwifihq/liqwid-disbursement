@@ -58,3 +58,38 @@ export async function sendDiscordPaymentAlert(alert: PaymentAlertJob) {
     }],
   }, { timeout: 15_000 });
 }
+
+export type WorkerErrorAlert = {
+  component: string;
+  message: string;
+  jobId?: string;
+  jobName?: string;
+  attempt?: string;
+  batchId?: string;
+  transactionId?: string;
+  reference?: string;
+};
+
+export async function sendDiscordWorkerErrorAlert(alert: WorkerErrorAlert) {
+  const fields = [
+    { name: 'Component', value: alert.component.slice(0, 100), inline: true },
+    ...(alert.jobName ? [{ name: 'Job', value: alert.jobName.slice(0, 100), inline: true }] : []),
+    ...(alert.attempt ? [{ name: 'Attempt', value: alert.attempt.slice(0, 50), inline: true }] : []),
+    ...(alert.jobId ? [{ name: 'Job ID', value: alert.jobId.slice(0, 200), inline: false }] : []),
+    ...(alert.batchId ? [{ name: 'Batch', value: alert.batchId.slice(0, 200), inline: false }] : []),
+    ...(alert.transactionId ? [{ name: 'Transaction', value: alert.transactionId.slice(0, 200), inline: false }] : []),
+    ...(alert.reference ? [{ name: 'Reference', value: alert.reference.slice(0, 200), inline: false }] : []),
+    { name: 'Error', value: alert.message.slice(0, 1000), inline: false },
+  ];
+
+  await axios.post(webhookUrl('failed'), {
+    username: 'LiqWiFi Workers',
+    allowed_mentions: { parse: [] },
+    embeds: [{
+      title: 'Background worker error',
+      color: 0xdc2626,
+      fields,
+      timestamp: new Date().toISOString(),
+    }],
+  }, { timeout: 15_000 });
+}
