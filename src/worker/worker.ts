@@ -183,9 +183,6 @@ async function bootstrap() {
       const narration = bankNarration(transaction.narration, `Payment to ${transaction.recipientName}`);
       const payout = {
         reference: transaction.reference,
-        amount,
-        currency: transaction.currency,
-        narration,
         destination: {
           type: 'bank_account' as const,
           amount,

@@ -4,9 +4,6 @@ import { getKoraConfig } from '../config';
 
 export type KoraPayout = {
   reference: string;
-  amount: number;
-  currency: string;
-  narration: string;
   destination: {
     type: 'bank_account';
     amount: number;
@@ -47,7 +44,7 @@ export class KorapayService {
         data: {
           reference: payload.reference,
           status: 'simulated',
-          narration: payload.narration,
+          narration: payload.destination.narration,
           provider_id: `sim-${Date.now()}`,
         },
       };
