@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import axios from 'axios';
 import { Worker } from 'bullmq';
 import IORedis from 'ioredis';
+import { IsNull } from 'typeorm';
 import { Batch, BatchStatus } from '../entities/batch.entity';
 import { Transaction } from '../entities/transaction.entity';
 import { AppDataSource } from '../ormconfig';
@@ -16,11 +17,15 @@ import { getPaymentMode, validateRuntimeConfig } from '../config';
 import {
   enqueuePaymentAlert,
   enqueuePaymentConfirmation,
+  enqueuePayoutSuccessEmail,
   PAYMENT_ALERT_QUEUE,
   PAYMENT_CONFIRMATION_QUEUE,
+  PAYOUT_EMAIL_QUEUE,
   PaymentAlertJob,
   PaymentConfirmationJob,
+  PayoutEmailJob,
 } from '../queues/payment-queues';
+import { payoutEmailLogoPath, sendPayoutSuccessEmail } from '../services/payout-email.service';
 import { parseMinorUnits } from '../utils/money';
 
 const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -126,7 +131,10 @@ function providerMessage(response: any) {
 
 async function bootstrap() {
   validateRuntimeConfig('worker');
-  if (getPaymentMode() === 'live') validateDiscordPaymentAlerts();
+  if (getPaymentMode() === 'live') {
+    validateDiscordPaymentAlerts();
+    payoutEmailLogoPath();
+  }
   await AppDataSource.initialize();
 
   const worker = new Worker('disburse', async (job) => {
@@ -257,6 +265,9 @@ async function bootstrap() {
         status,
         message: providerMessage(response),
       });
+      if (status === 'succeeded') {
+        await enqueuePayoutSuccessEmail({ batchId, transactionId: transaction.id });
+      }
       return { ok: true, status };
     } catch (error) {
       if (axios.isAxiosError(error)
@@ -291,6 +302,9 @@ async function bootstrap() {
             status: latest.status,
             message: 'Terminal status was received before confirmation retries ended.',
           });
+          if (latest.status === 'succeeded') {
+            await enqueuePayoutSuccessEmail({ batchId, transactionId: latest.id });
+          }
         } else {
           await txRepo.update({ id: transaction.id }, { status: 'pending_review', providerResponse: errorResponse as any });
           await updateBatchStatus(batchId);
@@ -312,6 +326,32 @@ async function bootstrap() {
   const alertWorker = new Worker<PaymentAlertJob>(PAYMENT_ALERT_QUEUE, async (job) => {
     await sendDiscordPaymentAlert(job.data);
     return { ok: true, status: job.data.status };
+  }, { connection, concurrency: 2 });
+
+  const payoutEmailWorker = new Worker<PayoutEmailJob>(PAYOUT_EMAIL_QUEUE, async (job) => {
+    const { batchId, transactionId } = job.data;
+    if (!batchId || !transactionId) throw new Error('Payout email job is missing its database identifiers.');
+
+    return AppDataSource.transaction(async (manager) => {
+      const repository = manager.getRepository(Transaction);
+      const transaction = await repository.findOne({
+        where: { id: transactionId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!transaction || transaction.batchId !== batchId) {
+        throw new Error('Payout email job does not match a transaction.');
+      }
+      if (transaction.status !== 'succeeded' || transaction.payoutEmailSentAt || !transaction.recipientEmail) {
+        return { ok: false, status: 'skipped' };
+      }
+
+      await sendPayoutSuccessEmail(transaction);
+      await repository.update(
+        { id: transaction.id, payoutEmailSentAt: IsNull() },
+        { payoutEmailSentAt: new Date() },
+      );
+      return { ok: true, status: 'sent' };
+    });
   }, { connection, concurrency: 2 });
 
   worker.on('completed', (job) => console.log('Completed', job.id));
@@ -340,6 +380,15 @@ async function bootstrap() {
   alertWorker.on('error', (error) => {
     console.error('Discord alert worker error:', errorMessage(error));
     void reportWorkerError({ component: 'discord-alert-worker', message: errorMessage(error) });
+  });
+  payoutEmailWorker.on('completed', (job) => console.log('Payout email sent', job.id));
+  payoutEmailWorker.on('failed', (job, error) => {
+    console.error('Payout email failed', job?.id, errorMessage(error));
+    reportFinalJobFailure('payout-email-worker', job, error);
+  });
+  payoutEmailWorker.on('error', (error) => {
+    console.error('Payout email worker error:', errorMessage(error));
+    void reportWorkerError({ component: 'payout-email-worker', message: errorMessage(error) });
   });
   console.log('Worker started');
 }

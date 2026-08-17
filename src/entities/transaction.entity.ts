@@ -50,6 +50,9 @@ export class Transaction {
   @Column({ type: 'timestamptz', nullable: true })
   beneficiaryVerifiedAt: Date | null;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  payoutEmailSentAt: Date | null;
+
   @Column({ type: 'text', nullable: true, select: false, transformer: encryptedJsonTransformer })
   providerRequest: any;
 

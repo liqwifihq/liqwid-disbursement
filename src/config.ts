@@ -51,12 +51,35 @@ export function getKoraConfig() {
   return { mode, baseUrl: baseUrl.toString().replace(/\/$/, ''), secret };
 }
 
+function emailAddress(value: string, name: string) {
+  const named = /^.+\s<([^<>]+)>$/.exec(value);
+  const address = (named ? named[1] : value).trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address) || address.length > 254) {
+    throw new Error(`${name} must be a valid email address.`);
+  }
+  return value;
+}
+
+export function getResendConfig() {
+  const apiKey = required('RESEND_API_KEY');
+  if (apiKey.length < 20) throw new Error('RESEND_API_KEY is invalid.');
+
+  const from = emailAddress(required('RESEND_FROM'), 'RESEND_FROM');
+  const replyTo = emailAddress(
+    String(process.env.RESEND_REPLY_TO || 'hello@liqwifi.com').trim(),
+    'RESEND_REPLY_TO',
+  );
+
+  return { apiKey, from, replyTo };
+}
+
 export function validateRuntimeConfig(component: 'api' | 'worker') {
   required('DATABASE_URL');
   required('REDIS_URL');
   getKoraConfig();
   getDataEncryptionKey();
   if (component === 'api') getInternalApiToken();
+  if (component === 'worker' && getPaymentMode() === 'live') getResendConfig();
 
   if (process.env.NODE_ENV === 'production' && process.env.TYPEORM_SYNCHRONIZE !== 'false') {
     throw new Error('TYPEORM_SYNCHRONIZE must be false in production. Use reviewed migrations.');

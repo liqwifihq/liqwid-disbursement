@@ -4,6 +4,7 @@ import { AuditLog } from '../../entities/audit.entity';
 import { Batch, BatchStatus } from '../../entities/batch.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { AppDataSource } from '../../ormconfig';
+import { enqueuePayoutSuccessEmail } from '../../queues/payment-queues';
 import { KorapayService } from '../../services/korapay.service';
 import { LoggerService } from '../../services/logger.service';
 import { parseMinorUnits } from '../../utils/money';
@@ -86,6 +87,9 @@ export class WebhooksController {
       action: 'payment_webhook_transition',
       details: { batchId: transaction.batch.id, transactionId: transaction.id, reference, from: transaction.status, to: status },
     });
+    if (status === 'succeeded') {
+      await enqueuePayoutSuccessEmail({ batchId: transaction.batch.id, transactionId: transaction.id });
+    }
     logger.info('Processed Kora webhook', { reference, status });
     return { received: true, updated: true };
   }

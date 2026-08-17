@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Disbursement received</title>
+  <style>
+    body, table, td, p, a, h1 {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+    }
+  </style>
+  <!--
+    Open this file in a browser to preview the payout email.
+    Sample values sit between {{field}} comments and are replaced when Resend sends.
+  -->
+</head>
+<body style="margin:0;padding:0;background:#eef1f4;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+    Disbursement received — <!-- {{amountLabel}} -->NGN 5,000.00<!-- /{{amountLabel}} -->
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f4;padding:32px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e4e7ec;">
+          <tr>
+            <td style="background:#0b1220;padding:16px 36px 12px;">
+              <img src="assets/Liqwifi_CombMark_Duo_White.png" data-email-logo="true" alt="liqwifi" width="88" style="display:block;max-width:88px;height:auto;border:0;">
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#0b1220;padding:0;line-height:0;font-size:0;">
+              <img src="assets/header-accent.png" data-email-icon="header-accent" alt="" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0;">
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:36px 36px 8px;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <p style="margin:0 0 20px;color:#00b3c7;font-size:11px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;">Disbursement received</p>
+              <h1 style="margin:0 0 10px;color:#0b1220;font-size:22px;line-height:1.35;font-weight:600;">Hello <!-- {{recipientName}} -->Ada Okafor<!-- /{{recipientName}} -->,</h1>
+              <p style="margin:0;color:#4b5563;font-size:15px;line-height:1.65;">A payment from Liqwid Finance has been sent to your bank account.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 36px 12px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:14px 0;color:#6b7280;font-size:13px;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:1px solid #eef1f4;">Amount</td>
+                  <td style="padding:14px 0;color:#0b1220;font-size:13px;font-weight:600;text-align:right;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:1px solid #eef1f4;"><!-- {{amountLabel}} -->NGN 5,000.00<!-- /{{amountLabel}} --></td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 0;color:#6b7280;font-size:13px;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:1px solid #eef1f4;">Reference</td>
+                  <td style="padding:14px 0;color:#0b1220;font-size:13px;text-align:right;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:1px solid #eef1f4;"><!-- {{reference}} -->LQW-8F2A1C3B0001<!-- /{{reference}} --></td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 0;color:#6b7280;font-size:13px;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:1px solid #eef1f4;">Destination</td>
+                  <td style="padding:14px 0;color:#0b1220;font-size:13px;text-align:right;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:1px solid #eef1f4;"><!-- {{maskedAccount}} -->••••6789<!-- /{{maskedAccount}} --></td>
+                </tr>
+                <tr>
+                  <td style="padding:14px 0;color:#6b7280;font-size:13px;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:1px solid #eef1f4;">Date</td>
+                  <td style="padding:14px 0;color:#0b1220;font-size:13px;text-align:right;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:1px solid #eef1f4;"><!-- {{paidAt}} -->17 August 2026, 17:11 WAT<!-- /{{paidAt}} --></td>
+                </tr>
+                <!-- {{narrationRow}} -->
+                <tr>
+                  <td style="padding:14px 0;color:#6b7280;font-size:13px;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:1px solid #eef1f4;">Purpose</td>
+                  <td style="padding:14px 0;color:#0b1220;font-size:13px;text-align:right;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-bottom:1px solid #eef1f4;"><!-- {{narration}} -->August contractor payout<!-- /{{narration}} --></td>
+                </tr>
+                <!-- /{{narrationRow}} -->
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 36px 36px;color:#6b7280;font-size:13px;line-height:1.65;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <p style="margin:0 0 12px;">Funds typically appear according to your bank’s processing time.</p>
+              <p style="margin:0;">If you have a question about this transaction, email
+                <a href="mailto:hello@liqwifi.com" style="color:#0b1220;text-decoration:underline;"><!-- {{replyTo}} -->hello@liqwifi.com<!-- /{{replyTo}} --></a>
+                and include your reference number.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#0b1220;padding:36px 32px 20px;text-align:center;font-family:'SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <img src="assets/Liqwifi_CombMark_Duo_White.png" data-email-logo="true" alt="liqwifi" width="96" style="display:block;margin:0 auto 28px;max-width:96px;height:auto;border:0;">
+
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 28px;">
+                <tr>
+                  <td style="padding:0 6px;">
+                    <a href="https://apps.apple.com/app/liqwifi" style="display:block;line-height:0;">
+                      <img src="assets/badge-app-store.png" data-email-icon="app-store" alt="Download on the App Store" width="96" height="32" style="display:block;width:96px;height:32px;border:0;">
+                    </a>
+                  </td>
+                  <td style="padding:0 6px;">
+                    <a href="https://play.google.com/store/apps/details?id=com.liqwifi.app" style="display:block;line-height:0;">
+                      <img src="assets/badge-google-play.png" data-email-icon="google-play" alt="Get it on Google Play" width="108" height="32" style="display:block;width:108px;height:32px;border:0;">
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 28px;">
+                <tr>
+                  <td style="padding:0 6px;">
+                    <a href="https://x.com/liqwifi" style="display:block;line-height:0;">
+                      <img src="assets/icon-x.png" data-email-icon="x" alt="X" width="36" height="36" style="display:block;border:0;">
+                    </a>
+                  </td>
+                  <td style="padding:0 6px;">
+                    <a href="https://www.instagram.com/liqwifi" style="display:block;line-height:0;">
+                      <img src="assets/icon-instagram.png" data-email-icon="instagram" alt="Instagram" width="36" height="36" style="display:block;border:0;">
+                    </a>
+                  </td>
+                  <td style="padding:0 6px;">
+                    <a href="https://www.linkedin.com/company/liqwifi" style="display:block;line-height:0;">
+                      <img src="assets/icon-linkedin.png" data-email-icon="linkedin" alt="LinkedIn" width="36" height="36" style="display:block;border:0;">
+                    </a>
+                  </td>
+                  <td style="padding:0 6px;">
+                    <a href="https://www.facebook.com/liqwifi" style="display:block;line-height:0;">
+                      <img src="assets/icon-facebook.png" data-email-icon="facebook" alt="Facebook" width="36" height="36" style="display:block;border:0;">
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 12px;color:#9ca3af;font-size:12px;line-height:1.7;">
+                Liqwid Finance is committed to fast, secure transactions.
+              </p>
+              <p style="margin:0 0 16px;color:#9ca3af;font-size:12px;line-height:1.7;">
+                <a href="https://liqwifi.com/terms" style="color:#ffffff;text-decoration:underline;">Terms of service</a>
+                &nbsp;&nbsp;
+                <a href="https://liqwifi.com/privacy" style="color:#ffffff;text-decoration:underline;">Privacy policy</a>
+              </p>
+              <p style="margin:0;color:#6b7280;font-size:11px;line-height:1.6;">Copyright © 2026 Liqwid Finance. All rights reserved.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#0b1220;padding:0;line-height:0;font-size:0;">
+              <img src="assets/footer-pattern.png" data-email-icon="footer-pattern" alt="" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0;">
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

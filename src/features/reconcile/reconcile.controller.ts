@@ -7,7 +7,7 @@ import { AppDataSource } from '../../ormconfig';
 import { requestActor, requireRole } from '../../security/actor';
 import { KorapayService } from '../../services/korapay.service';
 import { parseMinorUnits } from '../../utils/money';
-import { enqueuePaymentAlert } from '../../queues/payment-queues';
+import { enqueuePaymentAlert, enqueuePayoutSuccessEmail } from '../../queues/payment-queues';
 
 function providerMatches(transaction: Transaction, data: any) {
   try {
@@ -81,6 +81,9 @@ export class ReconcileController {
             status,
             message: String(data?.message || response?.message || '').trim() || undefined,
           });
+        }
+        if (status === 'succeeded') {
+          await enqueuePayoutSuccessEmail({ batchId: body.batchId, transactionId: transaction.id });
         }
       }
       results.push({ reference: transaction.reference, status, changed });

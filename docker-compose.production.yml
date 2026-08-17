@@ -18,6 +18,9 @@ x-backend-environment: &backend-environment
   KORAPAY_ALLOWED_HOSTS: ${KORAPAY_ALLOWED_HOSTS:-api.korapay.com}
   DISCORD_SUCCESS_WEBHOOK_URL: ${DISCORD_SUCCESS_WEBHOOK_URL:?Set the successful-payment Discord webhook URL}
   DISCORD_FAILURE_WEBHOOK_URL: ${DISCORD_FAILURE_WEBHOOK_URL:?Set the failed-payment Discord webhook URL}
+  RESEND_API_KEY: ${RESEND_API_KEY:?Set RESEND_API_KEY in the production environment file}
+  RESEND_FROM: ${RESEND_FROM:?Set RESEND_FROM in the production environment file}
+  RESEND_REPLY_TO: ${RESEND_REPLY_TO:-hello@liqwifi.com}
 
 services:
   redis:

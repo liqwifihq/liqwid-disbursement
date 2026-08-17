@@ -31,6 +31,7 @@ Notes:
 - Uploaded CSV files require recipient name, recipient email, a 10-digit account number, bank code, amount, currency, and transaction_reference (the purpose shown on the recipient bank statement). The backend still generates a unique, batch-scoped payment ID for Korapay reconciliation.
 - Provider-connected payouts enqueue a Kora status confirmation after 60 seconds. Non-final results retry once per minute for up to 15 attempts; the queried Kora status is used to finalize the transaction and batch.
 - `DISCORD_SUCCESS_WEBHOOK_URL` receives confirmed-success alerts. `DISCORD_FAILURE_WEBHOOK_URL` receives failed-payment, unresolved-confirmation, and background-worker error alerts. Both must be HTTPS Discord webhook URLs and must point to separate Discord channels.
+- Live payouts send a branded Resend email to the CSV `recipient_email` after Korapay confirms success. Set `RESEND_API_KEY`, `RESEND_FROM` (a verified domain), and optionally `RESEND_REPLY_TO`. The template is `src/emails/payout-success.html`. Simulation never sends recipient emails.
 
 ## Deploying to an AWS server
 
