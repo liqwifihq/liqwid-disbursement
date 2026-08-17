@@ -31,8 +31,9 @@ export class FilesController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['rows'],
+      required: ['name', 'rows'],
       properties: {
+        name: { type: 'string', minLength: 2, maxLength: 80, example: 'August vendor payouts' },
         rows: {
           type: 'array',
           maxItems: 5000,
@@ -42,7 +43,7 @@ export class FilesController {
             properties: {
               recipient_name: { type: 'string', example: 'Ada Okafor' },
               recipient_email: { type: 'string', format: 'email', example: 'ada@example.com' },
-              account_number: { type: 'string', example: '0123456789' },
+              account_number: { type: 'string', example: '0123456789', minLength: 10, maxLength: 10, pattern: '^\\d{10}$' },
               bank_code: { type: 'string', example: '058' },
               amount: { type: 'string', example: '5000.00' },
               currency: { type: 'string', example: 'NGN' },
@@ -53,12 +54,12 @@ export class FilesController {
     },
   })
   async createBatch(
-    @Body() body: { rows?: Record<string, unknown>[] },
+    @Body() body: { name?: string; rows?: Record<string, unknown>[] },
     @Headers('x-admin-actor') actorHeader?: string,
     @Headers('x-admin-role') roleHeader?: string,
   ) {
     const actor = requestActor(actorHeader, roleHeader);
     requireRole(actor, ['maker', 'admin']);
-    return this.filesService.createBatch(actor.email, body.rows);
+    return this.filesService.createBatch(actor.email, body.rows, body.name);
   }
 }

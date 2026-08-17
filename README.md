@@ -13,7 +13,7 @@ npm run worker
 
 Endpoints:
 - POST /files/upload  -> multipart file upload, returns preview
-- POST /files/create-batch -> { rows }; actor comes from authenticated proxy headers
+- POST /files/create-batch -> { name, rows }; actor comes from authenticated proxy headers
 - GET /batches -> PII-minimized batch summaries
  - GET /batches/:id -> get batch and its transactions
 - POST /batches/:id/approve -> approve a ready batch
@@ -28,7 +28,7 @@ Notes:
 - DB synchronization is development-only and must be disabled in production.
 - The API always requires a 32+ character `INTERNAL_API_TOKEN`. Kora webhooks remain public but fail closed unless live signature verification is configured.
 - Queue payloads contain IDs only. The worker locks and reloads trusted payment data from PostgreSQL before calling Kora.
-- Uploaded CSV files require recipient name, recipient email, account number, bank code, amount, and currency. The backend generates a unique, batch-scoped payment reference for every transaction.
+- Uploaded CSV files require recipient name, recipient email, a 10-digit account number, bank code, amount, and currency. The backend generates a unique, batch-scoped payment reference for every transaction.
 - Provider-connected payouts enqueue a Kora status confirmation after 60 seconds. Non-final results retry once per minute for up to 15 attempts; the queried Kora status is used to finalize the transaction and batch.
 - `DISCORD_SUCCESS_WEBHOOK_URL` receives confirmed-success alerts. `DISCORD_FAILURE_WEBHOOK_URL` receives failed-payment, unresolved-confirmation, and background-worker error alerts. Both must be HTTPS Discord webhook URLs and must point to separate Discord channels.
 

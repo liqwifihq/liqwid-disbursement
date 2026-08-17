@@ -27,6 +27,7 @@ export class BatchesController {
       relations: ['transactions'],
       select: {
         id: true,
+        name: true,
         uploadedBy: true,
         totalAmount: true,
         status: true,

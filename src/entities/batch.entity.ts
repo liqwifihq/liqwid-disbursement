@@ -17,6 +17,9 @@ export class Batch {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ nullable: true })
+  name: string | null;
+
   @Column()
   uploadedBy: string;
 

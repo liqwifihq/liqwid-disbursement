@@ -56,7 +56,13 @@ function validateRows(rows: UploadRow[]) {
     } catch {
       invalid.push('amount');
     }
-    if (!/^\d{6,20}$/.test(row.account_number)) invalid.push('account_number');
+    if (!/^\d{10}$/.test(row.account_number)) {
+      rowErrors.push({
+        row: csvRow,
+        fields: ['account_number'],
+        message: accountNumberIssue(row.account_number),
+      });
+    }
     if (!/^[A-Za-z0-9_-]{2,20}$/.test(row.bank_code)) invalid.push('bank_code');
     if (!/^[A-Za-z]{3}$/.test(row.currency) || !allowedCurrencies.has(row.currency.toUpperCase())) invalid.push('currency');
     if (row.recipient_name.length < 2 || row.recipient_name.length > 120) invalid.push('recipient_name');
@@ -93,6 +99,20 @@ function validateRows(rows: UploadRow[]) {
 function transactionReference(batchId: string, rowIndex: number) {
   const compactBatchId = batchId.replace(/-/g, '').toUpperCase();
   return `LQW-${compactBatchId}-${String(rowIndex + 1).padStart(4, '0')}`;
+}
+
+function accountNumberIssue(value: string) {
+  if (!/^\d+$/.test(value)) return 'Account number must contain digits only and be exactly 10 digits.';
+  if (value.length < 10) return `Account number is ${value.length} digit${value.length === 1 ? '' : 's'}; it must be exactly 10.`;
+  return `Account number is ${value.length} digits; it must be exactly 10.`;
+}
+
+function normalizeBatchName(value?: string) {
+  const name = String(value ?? '').trim().replace(/\s+/g, ' ');
+  if (name.length < 2 || name.length > 80) {
+    throw new BadRequestException('Enter a batch name between 2 and 80 characters.');
+  }
+  return name;
 }
 
 @Injectable()
@@ -134,8 +154,9 @@ export class FilesService {
     };
   }
 
-  async createBatch(uploadedBy?: string, inputRows?: Record<string, unknown>[]) {
+  async createBatch(uploadedBy?: string, inputRows?: Record<string, unknown>[], batchName?: string) {
     const actor = String(uploadedBy || '').trim();
+    const name = normalizeBatchName(batchName);
     if (!actor) throw new BadRequestException('Uploaded by is required.');
     if (!Array.isArray(inputRows) || inputRows.length === 0) {
       throw new BadRequestException('At least one transaction is required.');
@@ -159,6 +180,7 @@ export class FilesService {
         const auditRepo = manager.getRepository(AuditLog);
 
         const batch = await batchRepo.save(batchRepo.create({
+          name,
           uploadedBy: actor,
           totalAmount: formatMinorUnits(totalInMinorUnits),
           status: 'ready',
@@ -177,7 +199,7 @@ export class FilesService {
         await auditRepo.save(auditRepo.create({
           actor,
           action: 'create_batch',
-          details: { batchId: batch.id, count: transactions.length },
+          details: { batchId: batch.id, name, count: transactions.length },
         }));
 
         return { batchId: batch.id, count: transactions.length };
