@@ -148,8 +148,8 @@ function buildTextEmail(input: {
     'Facebook: https://www.facebook.com/liqwifi',
     '',
     'Liqwid Finance is committed to fast, secure transactions.',
-    'Terms of service: https://liqwifi.com/terms',
-    'Privacy policy: https://liqwifi.com/privacy',
+    'Terms of service: https://www.liqwifi.com/legal/terms-of-service',
+    'Privacy policy: https://www.liqwifi.com/legal/privacy-policy',
     '',
     'Copyright © 2026 Liqwid Finance. All rights reserved.',
   );
