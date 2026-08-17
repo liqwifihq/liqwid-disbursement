@@ -6,4 +6,5 @@ dist/
 .next/
 coverage/
 .DS_Store
+#!!!!
 *.tsbuildinfo
