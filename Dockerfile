@@ -15,6 +15,5 @@ COPY --chown=node:node --from=build /app/package.json ./package.json
 COPY --chown=node:node --from=build /app/node_modules ./node_modules
 COPY --chown=node:node --from=build /app/dist ./dist
 COPY --chown=node:node --from=build /app/src/emails ./emails
-COPY --chown=node:node --from=build /app/images ./images
 USER node
 CMD ["node", "dist/main.js"]

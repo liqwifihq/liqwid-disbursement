@@ -25,7 +25,7 @@ import {
   PaymentConfirmationJob,
   PayoutEmailJob,
 } from '../queues/payment-queues';
-import { payoutEmailLogoPath, sendPayoutSuccessEmail } from '../services/payout-email.service';
+import { assertPayoutEmailAssets, sendPayoutSuccessEmail } from '../services/payout-email.service';
 import { parseMinorUnits } from '../utils/money';
 
 const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
@@ -133,7 +133,7 @@ async function bootstrap() {
   validateRuntimeConfig('worker');
   if (getPaymentMode() === 'live') {
     validateDiscordPaymentAlerts();
-    payoutEmailLogoPath();
+    assertPayoutEmailAssets();
   }
   await AppDataSource.initialize();
 
@@ -381,7 +381,10 @@ async function bootstrap() {
     console.error('Discord alert worker error:', errorMessage(error));
     void reportWorkerError({ component: 'discord-alert-worker', message: errorMessage(error) });
   });
-  payoutEmailWorker.on('completed', (job) => console.log('Payout email sent', job.id));
+  payoutEmailWorker.on('completed', (job) => {
+    const result = job.returnvalue as { status?: string } | undefined;
+    console.log(result?.status === 'sent' ? 'Payout email sent' : 'Payout email skipped', job.id);
+  });
   payoutEmailWorker.on('failed', (job, error) => {
     console.error('Payout email failed', job?.id, errorMessage(error));
     reportFinalJobFailure('payout-email-worker', job, error);

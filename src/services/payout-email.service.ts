@@ -4,17 +4,17 @@ import { Resend } from 'resend';
 import { getResendConfig } from '../config';
 import { Transaction } from '../entities/transaction.entity';
 
-const LOGO_FILENAME = 'Liqwifi_CombMark_Duo_White.png';
 const LOGO_CID = 'liqwifi-logo';
 const INLINE_ASSETS = [
-  { name: 'instagram', file: 'icon-instagram.png' },
-  { name: 'x', file: 'icon-x.png' },
-  { name: 'linkedin', file: 'icon-linkedin.png' },
-  { name: 'facebook', file: 'icon-facebook.png' },
-  { name: 'app-store', file: 'badge-app-store.png' },
-  { name: 'google-play', file: 'badge-google-play.png' },
-  { name: 'footer-pattern', file: 'footer-pattern.png' },
-  { name: 'header-accent', file: 'header-accent.png' },
+  { file: 'Liqwifi_CombMark_Duo_White.png', contentId: LOGO_CID },
+  { file: 'icon-instagram.png', contentId: 'icon-instagram' },
+  { file: 'icon-x.png', contentId: 'icon-x' },
+  { file: 'icon-linkedin.png', contentId: 'icon-linkedin' },
+  { file: 'icon-facebook.png', contentId: 'icon-facebook' },
+  { file: 'badge-app-store.png', contentId: 'icon-app-store' },
+  { file: 'badge-google-play.png', contentId: 'icon-google-play' },
+  { file: 'footer-pattern.png', contentId: 'icon-footer-pattern' },
+  { file: 'header-accent.png', contentId: 'icon-header-accent' },
 ] as const;
 
 function escapeHtml(value: string) {
@@ -60,8 +60,18 @@ function emailAssetPath(filename: string) {
   return found;
 }
 
-export function payoutEmailLogoPath() {
-  return emailAssetPath(LOGO_FILENAME);
+export function assertPayoutEmailAssets() {
+  payoutEmailTemplatePath();
+  for (const asset of INLINE_ASSETS) emailAssetPath(asset.file);
+}
+
+function inlinePngAttachment(filename: string, contentId: string) {
+  return {
+    filename,
+    content: fs.readFileSync(emailAssetPath(filename)).toString('base64'),
+    contentType: 'image/png',
+    contentId,
+  };
 }
 
 function payoutEmailTemplatePath() {
@@ -182,21 +192,8 @@ export async function sendPayoutSuccessEmail(transaction: Transaction) {
     subject: `Disbursement received — ${amountLabel}`,
     html: buildHtmlEmail(fields),
     text: buildTextEmail(fields),
-    attachments: [
-      {
-        filename: LOGO_FILENAME,
-        path: payoutEmailLogoPath(),
-        contentType: 'image/png',
-        contentId: LOGO_CID,
-      },
-      ...INLINE_ASSETS.map((asset) => ({
-        filename: asset.file,
-        path: emailAssetPath(asset.file),
-        contentType: 'image/png',
-        contentId: `icon-${asset.name}`,
-      })),
-    ],
-  }, { idempotencyKey: `payout-email-${transaction.id}` });
+    attachments: INLINE_ASSETS.map((asset) => inlinePngAttachment(asset.file, asset.contentId)),
+  }, { idempotencyKey: `payout-email-v2-${transaction.id}` });
 
   if (error) throw new Error(error.message || 'Resend rejected the payout email.');
 }
