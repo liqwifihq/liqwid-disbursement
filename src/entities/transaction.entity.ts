@@ -35,6 +35,9 @@ export class Transaction {
   @Column({ unique: true })
   reference: string;
 
+  @Column({ nullable: true })
+  narration: string | null;
+
   @Column({ default: 'pending' })
   status: string;
 

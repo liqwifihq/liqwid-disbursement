@@ -13,6 +13,7 @@ const REQUIRED_COLUMNS = [
   'bank_code',
   'amount',
   'currency',
+  'transaction_reference',
 ] as const;
 
 type UploadRow = Record<(typeof REQUIRED_COLUMNS)[number], string>;
@@ -63,6 +64,14 @@ function validateRows(rows: UploadRow[]) {
         message: accountNumberIssue(row.account_number),
       });
     }
+    const narrationIssue = transactionReferenceIssue(row.transaction_reference);
+    if (narrationIssue) {
+      rowErrors.push({
+        row: csvRow,
+        fields: ['transaction_reference'],
+        message: narrationIssue,
+      });
+    }
     if (!/^[A-Za-z0-9_-]{2,20}$/.test(row.bank_code)) invalid.push('bank_code');
     if (!/^[A-Za-z]{3}$/.test(row.currency) || !allowedCurrencies.has(row.currency.toUpperCase())) invalid.push('currency');
     if (row.recipient_name.length < 2 || row.recipient_name.length > 120) invalid.push('recipient_name');
@@ -99,6 +108,13 @@ function validateRows(rows: UploadRow[]) {
 function transactionReference(batchId: string, rowIndex: number) {
   const compactBatchId = batchId.replace(/-/g, '').toUpperCase();
   return `LQW-${compactBatchId}-${String(rowIndex + 1).padStart(4, '0')}`;
+}
+
+function transactionReferenceIssue(value: string) {
+  const narration = String(value || '').trim().replace(/\s+/g, ' ');
+  if (narration.length < 3) return 'Transaction reference must be at least 3 characters.';
+  if (narration.length > 80) return 'Transaction reference must be 80 characters or fewer.';
+  return null;
 }
 
 function accountNumberIssue(value: string) {
@@ -141,6 +157,7 @@ export class FilesService {
       ...row,
       recipient_email: row.recipient_email.toLowerCase(),
       currency: row.currency.toUpperCase(),
+      transaction_reference: row.transaction_reference.replace(/\s+/g, ' '),
     }));
     if (!rows.length) throw new BadRequestException('The CSV does not contain any data rows.');
 
@@ -167,6 +184,7 @@ export class FilesService {
       ...row,
       recipient_email: row.recipient_email.toLowerCase(),
       currency: row.currency.toUpperCase(),
+      transaction_reference: row.transaction_reference.replace(/\s+/g, ' '),
     }));
     const rowErrors = validateRows(rows);
     if (rowErrors.length) throw new BadRequestException({ message: 'Fix invalid rows before creating a batch.', rowErrors });
@@ -194,6 +212,7 @@ export class FilesService {
           amount: formatMinorUnits(parseMinorUnits(row.amount)),
           currency: row.currency,
           reference: transactionReference(batch.id, index),
+          narration: row.transaction_reference,
         })));
         await txRepo.save(transactions);
         await auditRepo.save(auditRepo.create({

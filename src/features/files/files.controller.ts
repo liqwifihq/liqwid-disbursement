@@ -39,7 +39,7 @@ export class FilesController {
           maxItems: 5000,
           items: {
             type: 'object',
-            required: ['recipient_name', 'recipient_email', 'account_number', 'bank_code', 'amount', 'currency'],
+            required: ['recipient_name', 'recipient_email', 'account_number', 'bank_code', 'amount', 'currency', 'transaction_reference'],
             properties: {
               recipient_name: { type: 'string', example: 'Ada Okafor' },
               recipient_email: { type: 'string', format: 'email', example: 'ada@example.com' },
@@ -47,6 +47,7 @@ export class FilesController {
               bank_code: { type: 'string', example: '058' },
               amount: { type: 'string', example: '5000.00' },
               currency: { type: 'string', example: 'NGN' },
+              transaction_reference: { type: 'string', minLength: 3, maxLength: 80, example: 'Salary Payment' },
             },
           },
         },

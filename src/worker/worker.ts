@@ -177,7 +177,7 @@ async function bootstrap() {
           type: 'bank_account',
           amount: Number(transaction.amount),
           currency: transaction.currency,
-          narration: `Payment to ${transaction.recipientName}`,
+          narration: transaction.narration?.trim() || `Payment to ${transaction.recipientName}`,
           bank_account: {
             bank: transaction.bankCode,
             account: transaction.accountNumber,
