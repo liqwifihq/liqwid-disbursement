@@ -6,7 +6,7 @@ import { IsNull } from 'typeorm';
 import { Batch, BatchStatus } from '../entities/batch.entity';
 import { Transaction } from '../entities/transaction.entity';
 import { AppDataSource } from '../ormconfig';
-import { KorapayService } from '../services/korapay.service';
+import { KorapayService, bankNarration } from '../services/korapay.service';
 import {
   sendDiscordPaymentAlert,
   sendDiscordWorkerErrorAlert,
@@ -179,13 +179,18 @@ async function bootstrap() {
       if (korapay.mode === 'live') {
         await enqueuePaymentConfirmation({ batchId, transactionId: transaction.id });
       }
+      const amount = Number(transaction.amount);
+      const narration = bankNarration(transaction.narration, `Payment to ${transaction.recipientName}`);
       const payout = {
         reference: transaction.reference,
+        amount,
+        currency: transaction.currency,
+        narration,
         destination: {
-          type: 'bank_account',
-          amount: Number(transaction.amount),
+          type: 'bank_account' as const,
+          amount,
           currency: transaction.currency,
-          narration: transaction.narration?.trim() || `Payment to ${transaction.recipientName}`,
+          narration,
           bank_account: {
             bank: transaction.bankCode,
             account: transaction.accountNumber,
@@ -195,7 +200,7 @@ async function bootstrap() {
             email: transaction.recipientEmail,
           },
         },
-      } as const;
+      };
       const response = await korapay.payout(payout);
       const providerStatus = response?.data?.status;
       const status = providerStatus === 'success'
@@ -205,7 +210,10 @@ async function bootstrap() {
           : providerStatus === 'simulated'
             ? 'simulated'
             : 'processing';
-      await txRepo.update({ id: transaction.id, status: 'processing' }, { status, providerResponse: response });
+      await txRepo.update(
+        { id: transaction.id, status: 'processing' },
+        { status, providerRequest: payout as any, providerResponse: response },
+      );
       await updateBatchStatus(batchId);
       return { ok: response?.status !== false, status };
     } catch (error) {

@@ -113,7 +113,7 @@ function transactionReference(batchId: string, rowIndex: number) {
 function transactionReferenceIssue(value: string) {
   const narration = String(value || '').trim().replace(/\s+/g, ' ');
   if (narration.length < 3) return 'Transaction reference must be at least 3 characters.';
-  if (narration.length > 80) return 'Transaction reference must be 80 characters or fewer.';
+  if (narration.length > 40) return 'Transaction reference must be 40 characters or fewer so banks can display it.';
   return null;
 }
 

@@ -4,6 +4,9 @@ import { getKoraConfig } from '../config';
 
 export type KoraPayout = {
   reference: string;
+  amount: number;
+  currency: string;
+  narration: string;
   destination: {
     type: 'bank_account';
     amount: number;
@@ -13,6 +16,16 @@ export type KoraPayout = {
     customer: { name: string; email: string };
   };
 };
+
+/** NIP remarks are short; banks typically display 12–40 characters. */
+export function bankNarration(value?: string | null, fallback = 'Payment') {
+  const cleaned = String(value || fallback)
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[^\w\s./&()-]/g, '')
+    .trim();
+  return (cleaned || fallback).slice(0, 40);
+}
 
 export class KorapayService {
   private readonly baseUrl: string;
@@ -31,7 +44,12 @@ export class KorapayService {
       return {
         status: true,
         message: 'Payment simulated; no funds were transferred.',
-        data: { reference: payload.reference, status: 'simulated', provider_id: `sim-${Date.now()}` },
+        data: {
+          reference: payload.reference,
+          status: 'simulated',
+          narration: payload.narration,
+          provider_id: `sim-${Date.now()}`,
+        },
       };
     }
     const response = await axios.post(

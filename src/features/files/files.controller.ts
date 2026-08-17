@@ -47,7 +47,7 @@ export class FilesController {
               bank_code: { type: 'string', example: '058' },
               amount: { type: 'string', example: '5000.00' },
               currency: { type: 'string', example: 'NGN' },
-              transaction_reference: { type: 'string', minLength: 3, maxLength: 80, example: 'Salary Payment' },
+              transaction_reference: { type: 'string', minLength: 3, maxLength: 40, example: 'Salary Payment' },
             },
           },
         },
